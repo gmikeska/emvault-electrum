@@ -66,7 +66,7 @@ async fn subscribe_notify_unsubscribe_roundtrip() {
         loop {
             match updates.recv().await {
                 Ok(u) if u.script == script => break u,
-                _ => continue,
+                _ => {}
             }
         }
     })

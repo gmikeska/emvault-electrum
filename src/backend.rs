@@ -54,7 +54,7 @@ impl ElectrumBackend {
     /// # Errors
     /// [`ElectrumError::Electrum`] if the connection can't be established.
     pub fn connect(url: &str, network: Network) -> Result<Self, ElectrumError> {
-        let client = ElectrumClient::new(url)?;
+        let client = crate::connect_backend_client(url)?;
         Ok(Self {
             client: Arc::new(BdkElectrumClient::new(client)),
             network,

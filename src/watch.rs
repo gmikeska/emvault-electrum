@@ -32,6 +32,13 @@ const POLL_INTERVAL: Duration = Duration::from_secs(2);
 /// Capacity of the per-connection notification broadcast buffer.
 const UPDATE_CHANNEL_CAP: usize = 1024;
 
+/// How many times a dead connection is retried per worker iteration before
+/// yielding back to the main loop (so a dropped handle is noticed promptly).
+const RECONNECT_ATTEMPTS: u32 = 5;
+
+/// Base backoff between reconnect attempts (multiplied by the attempt number).
+const RECONNECT_BACKOFF: Duration = Duration::from_secs(1);
+
 /// A status-change notification for a watched script.
 #[derive(Debug, Clone)]
 pub struct ScriptUpdate {
@@ -70,12 +77,26 @@ impl WatchConn {
     /// # Errors
     /// [`ElectrumError::Electrum`] if the connection can't be established.
     pub fn connect(url: &str) -> Result<Self, ElectrumError> {
-        // Establish (and validate) the connection up-front on the caller's thread.
-        let client = ElectrumClient::new(url)?;
-        let (cmd_tx, cmd_rx) = smpsc::channel::<WatchCmd>();
         let (update_tx, _) = broadcast::channel(UPDATE_CHANNEL_CAP);
+        Self::connect_with(url, update_tx)
+    }
+
+    /// Like [`connect`](Self::connect) but publishes notifications onto a caller-
+    /// supplied broadcast channel, so a [`WatchPool`](crate::WatchPool) can share
+    /// one merged stream across all its connections.
+    ///
+    /// # Errors
+    /// [`ElectrumError::Electrum`] if the connection can't be established.
+    pub(crate) fn connect_with(
+        url: &str,
+        update_tx: broadcast::Sender<ScriptUpdate>,
+    ) -> Result<Self, ElectrumError> {
+        // Establish (and validate) the connection up-front on the caller's thread.
+        let client = crate::connect_watch_client(url)?;
+        let (cmd_tx, cmd_rx) = smpsc::channel::<WatchCmd>();
         let worker_updates = update_tx.clone();
-        thread::spawn(move || worker(client, &cmd_rx, &worker_updates));
+        let url = url.to_owned();
+        thread::spawn(move || worker(client, url, &cmd_rx, &worker_updates));
         Ok(Self { cmd_tx, update_tx })
     }
 
@@ -141,10 +162,11 @@ impl WatchConn {
 /// notifications (ping + `script_pop`) on a [`POLL_INTERVAL`] cadence. Exits when
 /// every [`WatchConn`] handle (and thus every command sender) is dropped.
 // The worker thread must OWN the client for its entire lifetime; by-value is
-// correct even though the body only ever needs `&client`.
+// correct even though the body only ever needs `&mut client`.
 #[allow(clippy::needless_pass_by_value)]
 fn worker(
-    client: ElectrumClient,
+    mut client: ElectrumClient,
+    url: String,
     cmd_rx: &smpsc::Receiver<WatchCmd>,
     updates: &broadcast::Sender<ScriptUpdate>,
 ) {
@@ -155,8 +177,44 @@ fn worker(
             Err(smpsc::RecvTimeoutError::Timeout) => {}
             Err(smpsc::RecvTimeoutError::Disconnected) => break,
         }
-        drain_notifications(&client, &watched, updates);
+        // A ping failure means the connection is dead → reconnect + resubscribe
+        // (Q4: auto-resubscribe lives in the crate). Bounded per iteration so a
+        // dropped `WatchConn` (cmd_rx disconnect) is still noticed promptly.
+        if drain_notifications(&client, &watched, updates).is_err()
+            && let Some(fresh) = reconnect(&url, &watched, updates)
+        {
+            client = fresh;
+        }
     }
+}
+
+/// Rebuild the connection and re-subscribe the whole active set, emitting the
+/// current status of each (so any change missed during the gap is re-checked by
+/// the app). A few bounded attempts with backoff; `None` if still down.
+fn reconnect(
+    url: &str,
+    watched: &HashSet<ScriptBuf>,
+    updates: &broadcast::Sender<ScriptUpdate>,
+) -> Option<ElectrumClient> {
+    for attempt in 0..RECONNECT_ATTEMPTS {
+        thread::sleep(RECONNECT_BACKOFF * (attempt + 1));
+        let Ok(client) = crate::connect_watch_client(url) else {
+            continue;
+        };
+        let scripts: Vec<ScriptBuf> = watched.iter().cloned().collect();
+        if let Ok(statuses) =
+            client.batch_script_subscribe(scripts.iter().map(ScriptBuf::as_script))
+        {
+            for (spk, status) in scripts.iter().zip(statuses) {
+                let _ = updates.send(ScriptUpdate {
+                    script: spk.clone(),
+                    status,
+                });
+            }
+            return Some(client);
+        }
+    }
+    None
 }
 
 /// Apply one command against the client, updating the local watched set and
@@ -220,10 +278,10 @@ fn drain_notifications(
     client: &ElectrumClient,
     watched: &HashSet<ScriptBuf>,
     updates: &broadcast::Sender<ScriptUpdate>,
-) {
+) -> Result<(), ()> {
     // `ping` forces a round-trip so the client processes any queued server
-    // notifications; ignore transport errors here (reconnect handling is Phase 3).
-    let _ = client.ping();
+    // notifications; a failure here means the connection is dead → signal reconnect.
+    client.ping().map_err(|_| ())?;
     for spk in watched {
         while let Ok(Some(status)) = client.script_pop(spk.as_script()) {
             // Send failures mean "no live receivers" — safe to ignore.
@@ -233,4 +291,5 @@ fn drain_notifications(
             });
         }
     }
+    Ok(())
 }

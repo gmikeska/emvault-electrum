@@ -1,4 +1,4 @@
-//! Live integration test against the GroupVault testnet4 electrs node.
+//! Live integration test against the `GroupVault` testnet4 electrs node.
 //!
 //! Gated on `ELECTRUM_LIVE=1` (needs reachability to electrs, e.g. an SSH tunnel:
 //! `ssh -f -N -L 60011:127.0.0.1:60001 root@<node>` then
