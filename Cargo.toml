@@ -1,6 +1,6 @@
 [package]
 name = "emvault-electrum"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 description = "Production, descriptor-private electrs/Electrum chain backend for EmVault (BDK) wallets: BDK sync/broadcast plus a scripthash watch/unwatch layer."
 license = "MIT OR Apache-2.0"
