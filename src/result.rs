@@ -3,7 +3,7 @@
 //! `scan_scripts` probe row).
 
 use bdk_wallet::ChangeSet;
-use bitcoin::ScriptBuf;
+use bitcoin::{ScriptBuf, Txid};
 
 use crate::electrum_client::ScriptStatus;
 
@@ -21,6 +21,19 @@ pub struct ElectrumSyncResult {
     pub new_mempool_txs: u32,
     /// Height of the wallet's local chain tip after applying the update.
     pub tip_height: u32,
+    /// Txids that were **confirmed** in the wallet's graph before this sync but
+    /// are **absent entirely** from the chain after it (reorged/evicted out — not
+    /// merely demoted to mempool, so a re-queued sweep is *not* listed here). Empty
+    /// on a normal forward sync; only populated on the reorg-rebuild path
+    /// ([`crate::ElectrumBackend::sync`]). The consuming app uses these to drive
+    /// migration reconcile.
+    pub evicted_txids: Vec<Txid>,
+    /// `true` when this sync detected a reorg below the persisted tip and rebuilt
+    /// the wallet's tx graph from scratch (the phantom-UTXO fix). A plain forward
+    /// sync leaves it `false`. When `true`, `changeset` is the **complete** rebuilt
+    /// changeset and the app must **replace** its persisted aggregate, not merge it
+    /// (a merge would re-introduce the reorged-out phantom UTXO).
+    pub reorg_rebuilt: bool,
 }
 
 /// A lightweight per-address probe row returned by

@@ -200,6 +200,7 @@ dependencies = [
  "bdk_wallet",
  "bitcoin",
  "hex",
+ "serde_json",
  "thiserror",
  "tokio",
 ]

@@ -28,6 +28,12 @@ pub enum ElectrumError {
         value: String,
     },
 
+    /// The reorg-recovery rebuild couldn't reconstruct a fresh wallet from the
+    /// live wallet's own public descriptors. Should be unreachable (the
+    /// descriptors already built a valid wallet); surfaced rather than panicked.
+    #[error("failed to rebuild wallet from descriptors during reorg recovery: {0}")]
+    Rebuild(String),
+
     /// The watch worker thread for a connection is gone (channel closed) — the
     /// connection is dead and could not be re-established.
     #[error("watch connection worker is disconnected")]
