@@ -6,6 +6,8 @@ broadcast, and *watch* a `bdk_wallet::Wallet` against a self-hosted
 [electrs](https://github.com/romanz/electrs) / [Fulcrum](https://github.com/cculianu/Fulcrum)
 Electrum server.
 
+See the [CHANGELOG](https://github.com/gmikeska/emvault-electrum/blob/master/CHANGELOG.md) for release notes.
+
 Unlike the nodeless [`emvault-esplora`](https://crates.io/crates/emvault-esplora)
 backend, the output **descriptor never leaves the app server**: sync is driven by
 per-script queries, not a descriptor upload. That makes this the backend for
