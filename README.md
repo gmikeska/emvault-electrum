@@ -20,10 +20,10 @@ so it can be used directly too.
 
 ```toml
 [dependencies]
-emvault-electrum = "0.6"
+emvault-electrum = "0.7"
 # or, via the facade:
-# emvault-core = { version = "0.6", features = ["electrum"] }
-# emvault      = { version = "0.6", features = ["electrum"] }
+# emvault-core = { version = "0.7", features = ["electrum"] }
+# emvault      = { version = "0.7", features = ["electrum"] }
 ```
 
 ## Two surfaces over one Electrum server
@@ -58,6 +58,8 @@ let txid   = backend.broadcast(&signed).await?;  // push a signed tx
 | `.sync(&mut wallet)` | incremental revealed-range sync |
 | `.rescan(&mut wallet)` | force a full rescan |
 | `.broadcast(&tx)` | push a signed tx, returns `Txid` |
+| `.tip_height()` | read the current chain tip (`blockchain.headers.subscribe`), no RPC node |
+| `.get_tx(txid)` | fetch a full transaction (`blockchain.transaction.get`) — nodeless prev-tx lookups |
 | `.scan_scripts(scripts)` | lightweight per-address balance/status probe → `AddressState` |
 
 `sync` / `rescan` return an [`ElectrumSyncResult`] (staged `ChangeSet` +
