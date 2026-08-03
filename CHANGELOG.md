@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Entries for 0.5.0 and earlier were reconstructed from git history.
 > This crate's first release was 0.4.0 (there is no 0.3.0 or earlier).
 
+## [0.7.0] - 2026-08-03
+
+### Added
+- `ElectrumBackend::tip_height()` — read the current chain tip over Electrum
+  (`blockchain.headers.subscribe`) without a bitcoind RPC node.
+- `ElectrumBackend::get_tx(txid)` — fetch a full transaction over Electrum
+  (`blockchain.transaction.get`). Enables nodeless previous-transaction lookups
+  (e.g. Trezor sign-data prev-tx fetch), so no consumer code path needs RPC when
+  running in electrum mode.
+
+### Changed
+- Released in lockstep with the suite-wide v0.7.0 update.
+
 ## [0.6.0] - 2026-07-29
 
 ### Added
