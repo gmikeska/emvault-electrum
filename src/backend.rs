@@ -84,6 +84,34 @@ impl ElectrumBackend {
         &self.client
     }
 
+    /// Current chain-tip height straight from the electrum server
+    /// (`blockchain.headers.subscribe`), without a wallet scan — a cheap live
+    /// read for header/confirmation display.
+    ///
+    /// # Errors
+    /// Surfaces electrum failures via [`ElectrumError`].
+    pub async fn tip_height(&self) -> Result<u32, ElectrumError> {
+        let client = Arc::clone(&self.client);
+        let header = tokio::task::spawn_blocking(move || client.inner.block_headers_subscribe())
+            .await
+            .map_err(|_| ElectrumError::WorkerPanicked)??;
+        Ok(u32::try_from(header.height).unwrap_or(u32::MAX))
+    }
+
+    /// Fetch a single transaction by txid from the electrum server
+    /// (`blockchain.transaction.get`), without a wallet scan — e.g. to supply a
+    /// hardware signer's required previous transactions.
+    ///
+    /// # Errors
+    /// Surfaces electrum failures via [`ElectrumError`].
+    pub async fn get_tx(&self, txid: Txid) -> Result<Transaction, ElectrumError> {
+        let client = Arc::clone(&self.client);
+        let tx = tokio::task::spawn_blocking(move || client.fetch_tx(txid))
+            .await
+            .map_err(|_| ElectrumError::WorkerPanicked)??;
+        Ok((*tx).clone())
+    }
+
     /// Revealed-only steady-state sync of `wallet` (Fork #1). Queries electrs for
     /// exactly the wallet's revealed SPKs → stages a BDK `ChangeSet`.
     ///
