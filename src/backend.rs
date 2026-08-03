@@ -56,6 +56,36 @@ impl ElectrumBackend {
     ///
     /// # Errors
     /// [`ElectrumError::Electrum`] if the connection can't be established.
+    ///
+    /// # Example
+    ///
+    /// Connect to electrs, then take a couple of cheap live reads (chain tip +
+    /// a single transaction) without a wallet scan. Requires a reachable
+    /// electrum server, so this example is compiled and type-checked but not
+    /// executed.
+    ///
+    /// ```no_run
+    /// use std::str::FromStr;
+    ///
+    /// use bitcoin::{Network, Txid};
+    /// use emvault_electrum::ElectrumBackend;
+    ///
+    /// # async fn demo() -> Result<(), emvault_electrum::ElectrumError> {
+    /// // `ssl://host:port` for production (rustls), `tcp://host:port` for dev.
+    /// let backend =
+    ///     ElectrumBackend::connect("ssl://electrum.example.com:50002", Network::Testnet)?;
+    ///
+    /// let height: u32 = backend.tip_height().await?;
+    ///
+    /// let txid = Txid::from_str(
+    ///     "5e3f9177f5e1a9c2c0d1a6d1f0b6c0a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8",
+    /// )
+    /// .unwrap();
+    /// let tx = backend.get_tx(txid).await?;
+    /// # let _ = (height, tx);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn connect(url: &str, network: Network) -> Result<Self, ElectrumError> {
         let client = crate::connect_backend_client(url)?;
         Ok(Self {
