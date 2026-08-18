@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Entries for 0.5.0 and earlier were reconstructed from git history.
 > This crate's first release was 0.4.0 (there is no 0.3.0 or earlier).
 
+## [0.8.0] - 2026-08-16
+
+### Added
+- Expanded test coverage: a new `tests/mock_electrum.rs` mock-Electrum suite and
+  additional `src/backend.rs` test cases.
+
+### Changed
+- Released in lockstep with the suite-wide v0.8.0 update.
+
 ## [0.7.0] - 2026-08-03
 
 ### Added
