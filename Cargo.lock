@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "emvault-electrum"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "bdk_electrum",
  "bdk_wallet",
