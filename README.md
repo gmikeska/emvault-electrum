@@ -20,7 +20,7 @@ so it can be used directly too.
 
 ```toml
 [dependencies]
-emvault-electrum = "0.11"
+emvault-electrum = "0.12"
 # or, via the facade:
 # emvault-core = { version = "0.10", features = ["electrum"] }
 # emvault      = { version = "0.10", features = ["electrum"] }
